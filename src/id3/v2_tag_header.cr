@@ -1,63 +1,48 @@
 require "./synchsafe"
-require "./error"
-require "./helper"
 
 module ID3
-  class V2TagHeader
-    @unsynchronised : Bool
-    @experimental : Bool
-    @extended_header : Bool
-    @footer : Bool
-    getter :major_version, :minor_version, :size
-    getter :unsynchronised, :extended_header, :experimental, :footer
-    getter :source
+  ID3_IDENTIFIER = [73, 68, 51]
 
-    def initialize(buff : IO::Memory)
-      @source = buff
-      @bytes = Bytes.new 10
-      @source.seek 0
-      @source.read @bytes
+  module V2
+    class Header
+      # @size : Int32
+      getter :major_version, :minor_version
+      getter :flag
+      getter :size
+      getter :unsynchronisation, :extended_header, :experimental, :footer
 
-      # Check bytes 1-3/10 for ['I','D','3']
-      unless is_tag?
-        raise NoTag.new
+      def initialize(str : String)
+        @source = File.open str
       end
 
-      # Major 4/10
-      # Minor 5/10
-      @major_version = @bytes[3].as UInt8
-      @minor_version = @bytes[4].as UInt8
+      def initialize(@source : File)
+        # ID3 Header is 10bytes, less than that is impossible
+        raise "File too short to be ID3" if @source.size < 10
+        @source.seek 0
+        # Create slices for IO#read(s : Slice(T))
+        id_slice = Slice(UInt8).new(3)
+        size_slice = Slice(UInt8).new(4)
 
-      # Flag Information Resides in 6/10
-      # [unsync, extended, experimental, footer, nil, nil, nil]
-      @unsynchronised = bit_set? 7
-      @extended_header = bit_set? 6
-      @experimental = bit_set? 5
-      @footer = bit_set? 4
+        # Make sure that this is actually an ID3 Tag
+        @source.read id_slice
+        raise "Not ID3" unless id_slice.to_a == ID3_IDENTIFIER
 
-      # Tag Size 7-10/10
-      sz_byte = @bytes[6, 4]
-      @size = ID3.synchsafe_decode(ID3.get_synchsafe(@bytes[6, 4]))
-    end
-
-    def frames_start
-      i = 10
-
-      if @extended_header
-        i += ID3.extended_header_size(@source)
+        # Header Structure (10bytes)
+        # [ID3][M][m][F][SSSS]
+        # M: Major Version
+        # m: Minor Version
+        # F: Flags
+        # S: Size
+        @major_version = @source.read_byte.as UInt8
+        @minor_version = @source.read_byte.as UInt8
+        @flag = @source.read_byte.as UInt8
+        @unsynchronisation = ((@flag & 0b1000000) > 0)
+        @extended_header = ((@flag & 0b0100000) > 0)
+        @experimental = ((@flag & 0b0010000) > 0)
+        @footer = ((@flag & 0b0001000) > 0)
+        @source.read size_slice
+        @size = ID3.synchsafe_decode(size_slice)
       end
-
-      return i
-    end
-
-    # Check the bits from the flag byte
-    def bit_set?(bit_n : Int) : Bool
-      @bytes[5].bit(bit_n) == 1
-    end
-
-    # Test the first 3 bytes for the identifier
-    private def is_tag? : Bool
-      @bytes[0, 3].to_a.map { |x| x.chr }.join == "ID3"
     end
   end
 end

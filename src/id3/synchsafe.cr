@@ -1,3 +1,5 @@
+require "./helper"
+
 module ID3
   def self.synchsafe_encode(bytes : Array(UInt8))
     i = bytes.join.to_i(16)
@@ -25,5 +27,10 @@ module ID3
     end
 
     return ret
+  end
+
+  def self.synchsafe_decode(ss_slice : Slice(UInt8)) : Int32
+    ss_int = get_synchsafe(ss_slice)
+    synchsafe_decode(ss_int)
   end
 end
