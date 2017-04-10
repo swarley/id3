@@ -29,6 +29,7 @@ module ID3
     return ret
   end
 
+  # TODO: Rename to bytes_to_synchsafe
   def self.synchsafe_decode(ss_slice : Slice(UInt8)) : Int32
     ss_int = get_synchsafe(ss_slice)
     synchsafe_decode(ss_int)
