@@ -1,4 +1,12 @@
 module ID3
-  class NoTag < Exception
+  module Error
+    class NoTag < Exception
+    end
+
+    class DecodingError < Exception
+    end
+
+    class UnknownGenre < DecodingError
+    end
   end
 end

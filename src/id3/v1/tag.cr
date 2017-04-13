@@ -1,3 +1,6 @@
+require "../error"
+require "./genre"
+
 module ID3
   module V1
     class Tag
@@ -7,7 +10,7 @@ module ID3
       @year : Int32 | Nil
       @comment : String | Nil
       @genre : Genre | Nil
-      @track : Int32 | Nil
+      @track : UInt8 | Nil
 
       def initialize(source : File)
         @source = source.dup.as File
@@ -15,37 +18,17 @@ module ID3
         @source.pos -= 128
         tag = @source.gets 3
 
-        # raise ID3::V1::NoTag.new unless tag == "TAG"
-
-        # title = @source.gets(30).as(String)
-        # artist = @source.gets(30).as(String)
-        # album = @source.gets(30).as(String)
-        # @year = @source.gets(4).as(String).to_i.as(Int32)
-
-        # @title = title[0, title.index('\0')]
-        # @artist = artist[0, artist.index('\0')]
-        # @album = album[0, album.index('\0')]
-        # # Comment is not initially rstrip'd because -1 might be
-        # # the track identifier (ID3v1.1)
-        # @comment = @source.gets(30).as(String)
-
-        # # Check for v.1
-        # if @comment[-2] == '\0' && @comment[-1] != '\0'
-        #   @track = @comment[-1].as(Char).ord
-        #   @comment = @comment[0..-2]
-        # end
-
-        # @comment = @comment[0, @comment.index('\0')]
+        raise Error::NoTag.new unless tag == "TAG"
 
         get_info
 
         # Specific error for out of bounds genre
         if @genre.nil?
-          raise DecodingError.new "Unknown Genre"
+          raise Error::DecodingError.new "Unknown Genre"
         end
 
         [@title, @artist, @album, @year, @comment].each do |v|
-          raise DecodingError.new "Tag size too small. Reached EOF" if v.nil?
+          raise Error::DecodingError.new "Tag size too small. Reached EOF" if v.nil?
         end
       end
 
@@ -65,7 +48,7 @@ module ID3
         id = @source.gets 3
 
         if id != "TAG"
-          raise DecodingError.new("Invalid ID3v1 tag identifier")
+          raise Error::DecodingError.new("Invalid ID3v1 tag identifier")
         end
       end
 
@@ -76,7 +59,7 @@ module ID3
 
         if title.nil?
           @title = ""
-          raise DecodingError.new("File too small. EOF Reached on Title")
+          raise Error::DecodingError.new("File too small. EOF Reached on Title")
         end
 
         # Get all data until null (As per the standard)
@@ -90,7 +73,7 @@ module ID3
 
         if artist.nil?
           @artist = ""
-          raise DecodingError.new("File too small. EOF Reached on Artist")
+          raise Error::DecodingError.new("File too small. EOF Reached on Artist")
         end
 
         @artist = get_str(artist)
@@ -103,7 +86,7 @@ module ID3
 
         if album.nil?
           @album = ""
-          raise DecodingError.new("File too small. EOF Reached on Album")
+          raise Error::DecodingError.new("File too small. EOF Reached on Album")
         end
         @album = get_str(album)
       end
@@ -115,7 +98,7 @@ module ID3
 
         if year.nil?
           @year = 0
-          raise DecodingError.new("File too small. EOF Reached on Year")
+          raise Error::DecodingError.new("File too small. EOF Reached on Year")
         end
 
         @year = year.as(String).to_i
@@ -124,18 +107,20 @@ module ID3
       def get_comment
         @source.skip_to_end
         @source.pos -= 31
-        comment = @source.gets 30
+        comment = @source.gets 29
+        track = @source.read_byte.as(UInt8)
 
         if comment.nil?
           @comment = ""
           @track = nil
-          raise DecodingError.new("File too small. EOF Reached on Comment")
+          raise Error::DecodingError.new("File too small. EOF Reached on Comment")
         end
 
-        if comment[-2] == '\0' && comment[-1] != '\0'
-          @track = comment[-1].ord
+        if comment.char_at(-1) == '\0' && track != 0
+          @track = track.as(UInt8)
           comment = comment[0..-2]
         else
+          comment += track.chr
           @track = nil
         end
         @comment = get_str(comment)
