@@ -99,6 +99,18 @@ describe ID3::V1 do
   end
 end
 
+describe ID3::V2 do
+  mp3_file = File.open("etc/energy.mp3")
+
+  it "parses headers" do
+    header = ID3::V2::Header.new(mp3_file)
+    puts header.size
+    fail "Size data incorrect" unless header.size == 2319
+    p header
+    # fail unless header.major_version == 3
+    # fail unless header.minor_verso
+  end
+end
 # describe ID3 do
 #   # TODO: Write tests
 #   mp3_file = File.open("etc/energy.mp3")
