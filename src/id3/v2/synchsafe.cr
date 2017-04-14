@@ -1,18 +1,13 @@
 module ID3
   module V2
     # Reconstruct a synchsafe integer
-    # Synchsafe ints are split into multiple bytes and I can't figure out a better way
-    # to convert the bytes to a single int
     def self.get_synchsafe(bytes : Array(UInt8)) : Int32
-      ss = 0_i32
-      temp = bytes
-      p temp.map { |x| x.to_s 2 }
-      bytes.each do |byte|
-        ss <<= 7
-        ss += byte
+      ret = 0
+      bytes.each_with_index do |byte, index|
+        ret |= byte << (7 * (bytes.size - (index + 1)))
       end
 
-      return ss
+      return ret
     end
 
     def self.synchsafe_encode(int : Int32)
