@@ -79,6 +79,7 @@ module ID3
       end
 
       private def get_size
+        p @str[6..9].bytes
         @size = ID3::V2.synchsafe_decode ID3::V2.get_synchsafe(@str[6..9].bytes)
       end
     end

@@ -6,6 +6,8 @@ require "./frames/*"
 module ID3
   module V2
     class FrameParser
+      getter :frames
+
       def initialize(source : File, @frame_start : Int32)
         @frames = [] of BasicFrame
         @source = source.dup.as File
@@ -29,12 +31,22 @@ module ID3
           return
         end
 
+        frame_type = TextFrame
         case header.id
+        when "COMM"
+          frame_type = CommentsFrame
+        when "COMR"
+          frame_type = CommericalFrame
+        when "TXXX"
+          frame_type = UserTextFrame
         when /^T/
-          @frames.push TextFrame.new(header)
+          frame_type = TextFrame
         else
-          @source.gets(header.size)
+          puts @source.gets(header.size)
           puts "Only text frames implemented"
+        end
+        if frame_type != nil
+          @frames.push frame_type.new(header)
         end
       end
 
@@ -44,9 +56,3 @@ module ID3
     end
   end
 end
-
-file = File.open "../../../etc/energy.mp3"
-head = ID3::V2::Header.new file
-parser = ID3::V2::FrameParser.new file, 10
-parser.get_frames
-parser.frames

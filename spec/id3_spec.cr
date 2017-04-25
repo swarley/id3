@@ -102,6 +102,17 @@ end
 describe ID3::V2 do
   mp3_file = File.open("etc/energy.mp3")
 
+  it "parses headers" do
+    header = ID3::V2::Header.new(mp3_file)
+    puts header.size
+  end
+
+  it "parses files" do
+    parser = ID3::V2::FrameParser.new(mp3_file, 10) # Need to make it so extended header and padding are considered.
+    parser.get_frames
+    p parser.frames
+  end
+
   # it "parses headers" do
   #   header = ID3::V2::Header.new(mp3_file)
   #   puts header.size
